@@ -23,23 +23,33 @@ class GeminiService:
             sample_snippets = []
             for f in repo_data["all_files"]:
                 if f.get("is_important") or len(sample_snippets) < 15:
-                    sample_snippets.append(f"--- File: {f['path']} ---\n{f.get('content', '')[:1500]}")
+                    file_path = f["path"]
+                    file_content = f.get("content", "")[:1500]
+                    sample_snippets.append(f"--- File: {file_path} ---\n{file_content}")
+
+            repo_name = repo_data["repo_info"]["name"]
+            repo_owner = repo_data["repo_info"]["owner"]
+            primary_lang = repo_data["primary_language"]
+            file_count = repo_data["file_count"]
+            total_lines = repo_data["total_lines"]
+            formatted_file_list = json.dumps(file_list[:80], indent=2)
+            joined_snippets = "\n".join(sample_snippets[:10])
 
             prompt = f"""
 You are RepoRescue AI, an expert software architecture analyst.
 Analyze the following GitHub repository and produce a structured JSON response.
 
-Repository Name: {repo_data['repo_info']['name']}
-Owner: {repo_data['repo_info']['owner']}
-Primary Language: {repo_data['primary_language']}
-Total Files: {repo_data['file_count']}
-Total Lines: {repo_data['total_lines']}
+Repository Name: {repo_name}
+Owner: {repo_owner}
+Primary Language: {primary_lang}
+Total Files: {file_count}
+Total Lines: {total_lines}
 
 File Directory Structure:
-{json.dumps(file_list[:80], indent=2)}
+{formatted_file_list}
 
 Source Code Samples:
-{"\n".join(sample_snippets[:10])}
+{joined_snippets}
 
 Return ONLY a valid JSON object strictly matching this schema structure:
 {{
@@ -115,6 +125,8 @@ Return ONLY a valid JSON object strictly matching this schema structure:
             from google import genai
             client = genai.Client(api_key=api_key)
 
+            formatted_file_tree = json.dumps(file_tree[:100], indent=2)
+
             prompt = f"""
 You are RepoRescue AI Change Impact Analyzer.
 Proposed Change: "{change_request}"
@@ -123,7 +135,7 @@ Repository Overview:
 {repo_summary}
 
 Files in Repository:
-{json.dumps(file_tree[:100], indent=2)}
+{formatted_file_tree}
 
 Analyze which files and modules are affected by this proposed change, assess risk, and suggest next steps.
 Return ONLY valid JSON with this structure:
@@ -161,3 +173,4 @@ Return ONLY valid JSON with this structure:
         except Exception as e:
             print(f"Gemini Impact API notice: {e}. Falling back to deterministic engine.")
             return None
+
